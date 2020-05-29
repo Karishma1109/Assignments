@@ -1,0 +1,104 @@
+---
+title: "ML Project Karishma Yadav"
+author: "Karishma Yadav"
+date: "5/29/2020"
+output: html_document
+---
+
+BACKGROUND
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+This dataset consists of data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants for Human Activity Recognition(HAR) research which focuses on discriminating between different Weight lifting exercises. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. They were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: 
+
+1. Exactly according to the specification (Class A) 
+2. Throwing the elbows to the front (Class B) 
+3. Lifting the dumbbell only halfway (Class C) 
+4. Lowering the dumbbell only halfway (Class D)
+5. Throwing the hips to the front (Class E)
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate.
+
+DATA SETS:
+The training data for this project:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+LOADING AND EXPLORING THE DATA SETS:
+
+```{r}
+library(caret);library(rpart);library(rpart.plot);library(RColorBrewer);library(rattle);library(e1071);library(randomForest); library(gbm)
+set.seed(111)
+trainset <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testset <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+dim(trainset); dim(testset)
+```
+
+Checking for NA's : 
+
+```{r}
+sum(is.na(trainset))
+sum(is.na(testset))
+```
+
+Removing NA's and unnecessary columns:
+
+```{r}
+trainset <- trainset[,colSums(is.na(trainset))==0]
+testset <- testset[, colSums(is.na(testset))==0]
+trainset <- trainset[,-c(1:7)]
+testset <- testset[,-c(1:7)]
+dim(trainset); dim(testset)
+sum(is.na(trainset))
+sum(is.na(testset))
+```
+
+Now that we have gotten rid of all the necessary columns, we can start cross validation of the data sets as follows:
+Partitioning the trainset dataset into sub samples of training (75%) and testing (25%) data sets.
+The out of sample error should be higher than the in sample error because the the model is based on the training set and will therefor most likely have a slightly worst performance on the testset. This will be shown further in the project.
+
+```{r}
+sub_sample <- createDataPartition(y=trainset$classe, p=0.75, list=FALSE)
+subtrain <- trainset[sub_sample,]
+subtest <- trainset[-sub_sample,]
+```
+
+Modelling the data sets:
+
+RANDOM FOREST MODEL:
+
+
+```{r}
+Random_Forest <- randomForest(factor(classe) ~ .,
+                              data = subtrain,
+                              ntree=100
+                              , metric = "Accuracy" 
+                              , preProcess=c("center", "scale")
+                              , trControl=trainControl(method = "cv"
+                                                       , number = 4
+                                                       , allowParallel = TRUE))
+Random_Forest
+plot(Random_Forest)
+trainresults <- predict(Random_Forest, subtest)
+trainacc <- sum(trainresults==subtest$classe)/length(trainresults)
+
+paste("Accuracy on training set =",trainacc)
+
+
+```
+
+Results
+The accuracy of this model is 0.994 and the Overall Out-of-Sample error is 0.0051.
+
+DECISION TREE VISUALIZATION:
+
+```{r}
+treeModel <- train(classe~.,method="rpart",data=subtrain)
+print(treeModel$finalModel)
+plot(treeModel$finalModel,uniform=TRUE,main="Decision Tree")
+text(treeModel$finalModel, use.n=TRUE,all=TRUE, cex=.8)
+```
+
